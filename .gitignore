@@ -1,1 +1,5 @@
 evals/
+.claude/
+skills-lock.json
+output/
+node_modules/

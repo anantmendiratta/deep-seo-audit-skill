@@ -97,3 +97,8 @@
 3. [Third priority]
 4. [Fourth priority]
 5. [Fifth priority]
+
+---
+
+> **Note:** A professional DOCX version of this report is also generated at `output/audit_report.docx` (see Phase 8 in SKILL.md).
+

@@ -10,9 +10,15 @@ A Claude Code skill (`SKILL.md`) that performs expert-level technical SEO audits
 
 ```
 deep-seo-audit-skill/
-├── SKILL.md          # The skill definition — frontmatter + audit instructions
+├── SKILL.md              # The skill definition — frontmatter + audit instructions
+├── assets/
+│   └── report-template.md  # Markdown report template
+├── scripts/
+│   ├── lighthouse_audit.sh  # Lighthouse CLI wrapper for CWV
+│   └── generate_docx.js     # Converts audit JSON → .docx (Phase 8, uses docx-js)
+├── references/                # Page-type signals, CWV thresholds, E-E-A-T, helpful content
 └── evals/
-    └── evals.json    # Test cases for evaluating skill quality
+    └── evals.json           # Test cases for evaluating skill quality
 ```
 
 ## Developing the Skill
@@ -34,6 +40,7 @@ This skill follows the [skill-creator framework](https://github.com/anthropics/s
 - **Page type detection is Phase 1** — every recommendation is framed around the detected page type (PDP, PLP, blog, etc.)
 - **Schema checking always uses Rich Results Test** — `web_fetch` cannot see JS-injected schema; the skill explicitly instructs using `web_search` to access the Google Rich Results Test URL
 - **Core Web Vitals checked via PageSpeed Insights** — accessed via `web_search` since it requires JavaScript rendering
+- **DOCX report generation (Phase 8)** — uses `scripts/generate_docx.js` (built on the [Anthropic docx skill](https://github.com/anthropics/skills/blob/main/skills/docx/SKILL.md)) to produce a professional Word document from structured audit JSON. Requires `npm install -g docx`.
 - **Priority hierarchy:** Crawlability → Technical → On-Page → Content → E-E-A-T
 
 ## Audit Phases (in order)
@@ -45,3 +52,4 @@ This skill follows the [skill-creator framework](https://github.com/anthropics/s
 5. Schema markup (via Rich Results Test)
 6. E-E-A-T & content quality
 7. Page-type-specific checks
+8. DOCX report generation (structured JSON → .docx via generate_docx.js)

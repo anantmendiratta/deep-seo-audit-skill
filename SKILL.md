@@ -1,7 +1,7 @@
 ---
 name: deep-seo-audit
 description: Expert-level technical SEO audit for any URL. Use this skill whenever the user wants to audit, analyze, review, or check the SEO of a website, page, or URL — even if they just say "check my site", "why isn't my page ranking", "quick SEO check", or "look at my title tags". Covers crawlability, indexation, Core Web Vitals (via Lighthouse), on-page SEO, schema markup, content quality, and E-E-A-T. Automatically detects page type (product listing, product detail, landing page, blog post, homepage, etc.) and tailors the audit accordingly. Also use for focused single-element checks like "is my schema correct?" or "check my page speed".
-allowed-tools: mcp__puppeteer, WebSearch, WebFetch, Bash(lighthouse *), Bash(curl *), Bash(python3 *), Read, Write
+allowed-tools: mcp__puppeteer, WebSearch, WebFetch, Bash(lighthouse *), Bash(curl *), Bash(python3 *), Bash(node *), Bash(npm *), Read, Write
 ---
 
 # Deep SEO Audit Skill
@@ -16,6 +16,7 @@ Load as needed:
 - `references/google-helpful-content.md` — Google's official helpful content guidelines (Who/How/Why framework, people-first checklist, search-engine-first warning signs). Read during Phase 6 alongside the E-E-A-T checklist.
 - `assets/report-template.md` — Output report template for full audits.
 - `scripts/lighthouse_audit.sh` — Runs Lighthouse CLI for CWV. Use in Phase 3.
+- `scripts/generate_docx.js` — Converts structured audit JSON to professional .docx report. Uses [docx-js](https://github.com/anthropics/skills/blob/main/skills/docx/SKILL.md). Run in Phase 8.
 
 ---
 
@@ -269,11 +270,70 @@ Run the matching section only:
 
 ---
 
+## Phase 8: Generate DOCX Report
+
+**For full audits only.** After completing Phases 1–7, generate a professional `.docx` report.
+
+### Step 1: Structure findings as JSON
+
+Collect all findings from Phases 1–7 into a single JSON object. The schema:
+
+```json
+{
+  "url": "<audited URL>",
+  "pageType": "<detected page type>",
+  "rendering": "<SSR | JS-rendered | Offline>",
+  "auditScope": "<Full | Quick check: ...>",
+  "auditDate": "<YYYY-MM-DD>",
+  "executiveSummary": "<2-4 sentence summary>",
+  "criticalIssues": [{ "title": "...", "what": "...", "fix": "...", "impact": "High" }],
+  "highPriority": [{ "title": "...", "what": "...", "fix": "..." }],
+  "mediumPriority": [{ "title": "...", "what": "...", "fix": "..." }],
+  "quickWins": [{ "title": "...", "what": "...", "fix": "..." }],
+  "whatsWorking": ["<strength 1>", "<strength 2>"],
+  "pageTypeFindings": ["<finding with emoji status>"],
+  "schema": {
+    "checkedVia": "...",
+    "found": ["<type>"],
+    "missing": ["<type>"],
+    "recommendation": "..."
+  },
+  "coreWebVitals": {
+    "mobile": { "lcp": "...", "inp": "...", "cls": "...", "fcp": "...", "ttfb": "..." },
+    "desktop": { "lcp": "...", "inp": "...", "cls": "..." },
+    "topBottleneck": "..."
+  },
+  "crawlability": {
+    "robotsTxt": "...", "sitemap": "...", "canonical": "...",
+    "indexation": "...", "redirects": "..."
+  },
+  "onPage": [{ "element": "...", "finding": "...", "status": "✅ / ⚠️ / ❌" }],
+  "nextSteps": ["<action 1>", "<action 2>"]
+}
+```
+
+Write this JSON to `output/audit_data.json`.
+
+### Step 2: Generate the DOCX
+
+```bash
+# Ensure docx package is available
+npm list -g docx > /dev/null 2>&1 || npm install -g docx
+
+# Generate the report
+node $SKILL_DIR/scripts/generate_docx.js output/audit_data.json output/audit_report.docx
+```
+
+Confirm the `.docx` was created, then tell the user:
+> "Your audit report is ready in two formats: `output/audit_report.md` (Markdown) and `output/audit_report.docx` (Word document)."
+
+---
+
 ## Output Format
 
 **For quick checks:** Answer the specific question directly. No full template needed — just the finding, evidence, and fix.
 
-**For full audits:** Use `assets/report-template.md` as the base. Be specific — quote actual tag content, show character counts, name the exact issue.
+**For full audits:** Use `assets/report-template.md` as the base. Be specific — quote actual tag content, show character counts, name the exact issue. After writing the markdown report, run Phase 8 to also generate a `.docx` version.
 
 ```
 # SEO Audit: [URL]
@@ -315,5 +375,6 @@ Run the matching section only:
 - **Lighthouse via Bash** — primary CWV tool; run `scripts/lighthouse_audit.sh`
 - **WebSearch** — PageSpeed Insights fallback, Rich Results Test, competitor SERP research
 - **Write** — save audit report to `output/audit_report.md`
+- **node generate_docx.js** — convert audit JSON to `.docx` (Phase 8); requires `npm install -g docx`
 - Never report schema absent without checking validator.schema.org, Rich Results Test, or puppeteer DOM extraction
 - Always report CWV for both mobile and desktop
