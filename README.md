@@ -195,11 +195,13 @@ deep-seo-audit-skill/
 ## Requirements
 
 - [Claude Code](https://claude.ai/code)
-- **Playwright MCP** — required for JS-rendered pages, OG tag extraction, schema DOM extraction, and all screenshots. Install Microsoft's official Playwright MCP:
+- **Playwright MCP** — required for JS-rendered pages, OG tag extraction, schema DOM extraction, and all screenshots. Install Microsoft's official Playwright MCP with the `--sandbox` flag to keep Chromium's OS-level sandbox active (the default omits it, which Chromium flags as a security concern on macOS):
   ```
-  claude mcp add playwright npx @playwright/mcp@latest
+  claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
   ```
   Tools used: `browser_navigate`, `browser_evaluate`, `browser_resize`, `browser_take_screenshot`
+
+  > **Why `--sandbox`?** By default `@playwright/mcp` passes `--no-sandbox` to Chromium for CI compatibility. On macOS, Chromium uses the OS sandbox natively, so `--no-sandbox` is both unnecessary and a security regression. Passing `--sandbox` explicitly re-enables it.
 
 - **Lighthouse CLI** — optional, for real CWV lab scores (falls back to PageSpeed Insights):
   ```
