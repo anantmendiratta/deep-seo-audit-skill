@@ -201,6 +201,16 @@ deep-seo-audit-skill/
   npm install
   ```
 
+### After cloning
+
+Run the hook installer once so the installed skill stays in sync with the source automatically:
+
+```
+bash scripts/install-hooks.sh
+```
+
+This installs a `post-commit` git hook that copies `SKILL.md`, `assets/report-template.md`, and all reference files into `.claude/skills/deep-seo-audit/` after every commit — keeping the skill runner always up to date.
+
 ---
 
 ## Eval Results
