@@ -658,38 +658,31 @@ Only fall back to `WebFetch` raw HTML extraction if puppeteer is unavailable. If
 
 After extracting schema via puppeteer, cross-reference with at least one of:
 
-1. **Rich Results Test** — Google's definitive check for rich result eligibility:
+1. **Rich Results Test** — checks Google-specific rich result eligibility:
    ```
    WebSearch: https://search.google.com/test/rich-results?url=[URL]
    ```
 
-2. **validator.schema.org** — validates correctness and completeness:
+2. **validator.schema.org** — checks structural correctness:
    ```
    WebFetch: https://validator.schema.org/#url=[URL]
    ```
 
-**The validator's error/warning count is the authoritative source of truth.** If the validator reports 0 errors and 0 warnings for a field, do not flag that field as an issue regardless of how the raw value looks in the JSON-LD source.
+Use these tools to check for rich result eligibility and structural errors. However, **validators can infer or normalise values that are not actually present in the markup** — do not let a validator's output override what you extracted from the DOM. If the raw schema has `@id: ""` and the validator displays a resolved URL, the raw value is still `""` and must be reported as such.
 
-### Step 3: Evaluate field values correctly
+### Step 3: Evaluate field values — report what the DOM contains
 
-When a schema field value looks unusual in the raw JSON-LD, apply these rules before flagging it:
-
-**JSON-LD `@id` with empty string (`""`):**
-- An empty string `""` is a valid relative IRI in JSON-LD. Processors resolve it against the document base URL, producing the full page URL (e.g. `""` on `https://example.com/page` resolves to `https://example.com/page`).
-- If the Rich Results Test / validator shows 0 errors for `@id`, **do not flag it as an error**.
-- Report it as a best-practice recommendation only: "Raw `@id` value is `""` — JSON-LD resolves this to the page URL, which is valid. Explicitly setting `@id` to the canonical URL is clearer and more robust."
-
-**Distinguishing field states — always quote the exact raw value:**
+Always quote the exact raw value from the puppeteer-extracted JSON-LD. Report what is actually there, not what a processor might infer.
 
 | State | Example | How to report |
 |-------|---------|--------------|
-| Field absent | key not in JSON-LD | "Field `X` is absent from the schema" |
-| Field present, empty string | `"@id": ""` | "Field `@id` raw value is `""` — resolves to page URL via JSON-LD (valid if validator shows 0 errors); recommend setting explicitly" |
-| Field present, null | `"price": null` | "Field `price` is present but `null` — not a valid value" |
-| Field present, wrong format | `"uploadDate": "Jan 2024"` | "Field `uploadDate` value is `"Jan 2024"` — must be ISO 8601 format" |
-| Field present, correct | `"@id": "https://..."` | Report as passing |
+| Field absent | key not in JSON-LD at all | "`X` is absent from the schema" |
+| Field present, empty string | `"@id": ""` | "`@id` is present but empty (`""`) — must be set to a valid URL" |
+| Field present, null | `"price": null` | "`price` is present but `null` — not a valid value" |
+| Field present, wrong format | `"uploadDate": "Jan 2024"` | "`uploadDate` value `"Jan 2024"` is not ISO 8601 — must be e.g. `2024-01-15T08:00:00Z`" |
+| Field present, correct value | `"@id": "https://..."` | Report as passing |
 
-Never say "field is missing" when the key is present in the JSON-LD. Never flag a value as invalid if the official validator accepts it without errors.
+Never say "field is missing" when the key exists in the JSON-LD — distinguish absent from empty. Never soften an empty or invalid value finding because an external validator happens to accept or infer it.
 
 **Expected schema by page type** — see `references/page-type-signals.md` for full table.
 
