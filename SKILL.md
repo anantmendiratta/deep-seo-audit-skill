@@ -1241,4 +1241,3 @@ If the page has a separate mobile URL (m-dot) detected via `rel="alternate" medi
 - Always report CWV for both mobile and desktop
 - Never assert a page is indexed or not indexed without a playwright screenshot of the Google `site:` SERP as evidence
 - Never report OG tags as absent based on `WebFetch` alone — always confirm via playwright DOM extraction or note it as unverifiable
-# hook test
