@@ -640,31 +640,56 @@ Note: what the top-ranking pages do that the audited page doesn't.
 
 ## Phase 5: Schema Markup
 
-⚠️ `WebFetch` and `curl` cannot reliably detect JS-injected schema. Never report "no schema" based on raw HTML alone.
+⚠️ `WebFetch` and `curl` see the raw HTML before JavaScript executes. Schema fields that appear empty in raw HTML may be populated at runtime by JS. **Always extract schema via puppeteer first.**
 
-**When reporting schema field issues, always distinguish clearly between:**
-- **Field absent** — the key does not appear in the JSON-LD block at all
-- **Field present but empty** — the key exists with value `""`, `null`, or `[]` — quote the exact value found and explain that an empty value is treated the same as absent by Google's validator
-- **Field present with wrong format** — the key exists but the value is invalid (e.g. `@id` is not a URL, `uploadDate` is not ISO 8601)
+### Step 1: Extract schema via puppeteer (primary method)
 
-Always quote the exact field value extracted from the schema when flagging an issue. Never say "field is missing" when the field is present with an empty value — say "field is present but empty (`""`) — an empty value is not valid".
+```javascript
+mcp__puppeteer__puppeteer_evaluate:
+  Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
+    .map(s => s.innerText)
+```
 
-**Always verify using one of these methods (in order of preference):**
+This returns the schema exactly as a JSON-LD processor (and Google) sees it after JS has run. Parse each block and record all types found.
 
-1. **validator.schema.org** — validates schema correctness and completeness:
-   ```
-   WebFetch: https://validator.schema.org/
-   ```
-   Or search: `site:validator.schema.org [URL]` — paste the page URL into the validator.
+Only fall back to `WebFetch` raw HTML extraction if puppeteer is unavailable. If using raw HTML, note explicitly: "Schema extracted from static HTML — JS-populated fields may differ from what Google indexes."
 
-2. **Rich Results Test** — checks Google-specific rich result eligibility:
+### Step 2: Validate via official tools
+
+After extracting schema via puppeteer, cross-reference with at least one of:
+
+1. **Rich Results Test** — Google's definitive check for rich result eligibility:
    ```
    WebSearch: https://search.google.com/test/rich-results?url=[URL]
    ```
 
-3. **puppeteer DOM extraction** — if `mcp__puppeteer` is available, extract `<script type="application/ld+json">` from the rendered DOM directly.
+2. **validator.schema.org** — validates correctness and completeness:
+   ```
+   WebFetch: https://validator.schema.org/#url=[URL]
+   ```
 
-Use method 1 or 2 for every audit. Never rely on raw HTML alone.
+**The validator's error/warning count is the authoritative source of truth.** If the validator reports 0 errors and 0 warnings for a field, do not flag that field as an issue regardless of how the raw value looks in the JSON-LD source.
+
+### Step 3: Evaluate field values correctly
+
+When a schema field value looks unusual in the raw JSON-LD, apply these rules before flagging it:
+
+**JSON-LD `@id` with empty string (`""`):**
+- An empty string `""` is a valid relative IRI in JSON-LD. Processors resolve it against the document base URL, producing the full page URL (e.g. `""` on `https://example.com/page` resolves to `https://example.com/page`).
+- If the Rich Results Test / validator shows 0 errors for `@id`, **do not flag it as an error**.
+- Report it as a best-practice recommendation only: "Raw `@id` value is `""` — JSON-LD resolves this to the page URL, which is valid. Explicitly setting `@id` to the canonical URL is clearer and more robust."
+
+**Distinguishing field states — always quote the exact raw value:**
+
+| State | Example | How to report |
+|-------|---------|--------------|
+| Field absent | key not in JSON-LD | "Field `X` is absent from the schema" |
+| Field present, empty string | `"@id": ""` | "Field `@id` raw value is `""` — resolves to page URL via JSON-LD (valid if validator shows 0 errors); recommend setting explicitly" |
+| Field present, null | `"price": null` | "Field `price` is present but `null` — not a valid value" |
+| Field present, wrong format | `"uploadDate": "Jan 2024"` | "Field `uploadDate` value is `"Jan 2024"` — must be ISO 8601 format" |
+| Field present, correct | `"@id": "https://..."` | Report as passing |
+
+Never say "field is missing" when the key is present in the JSON-LD. Never flag a value as invalid if the official validator accepts it without errors.
 
 **Expected schema by page type** — see `references/page-type-signals.md` for full table.
 
