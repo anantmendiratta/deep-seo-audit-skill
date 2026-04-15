@@ -1,5 +1,26 @@
-evals/
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Claude Code local config
 .claude/
-skills-lock.json
-output/
+
+# npm
 node_modules/
+package-lock.json
+
+# Generated audit outputs
+output/
+scripts/*.docx
+scripts/*.md
+
+# One-off / scratch scripts (not part of the skill)
+scripts/gen_seo_audit_*.js
+
+# Eval inputs/outputs (local only)
+evals/
+skills-lock.json
+
+# Logs and env
+*.log
+.env
