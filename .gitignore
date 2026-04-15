@@ -2,8 +2,13 @@
 .DS_Store
 **/.DS_Store
 
-# Claude Code local config
-.claude/
+# Claude Code local config (ignore runtime/auth files, but track the installed skill)
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/deep-seo-audit/
+*.pyc
+__pycache__/
 
 # npm
 node_modules/
