@@ -21,7 +21,7 @@ Every finding is backed by evidence: screenshots of Google SERPs, competitor pag
 | **0 — Scope Check** | Confirms quick check vs. full audit before fetching anything |
 | **1 — Page Type Detection** | Classifies page (PDP, PLP, blog, landing page, homepage, local, SaaS, FAQ) and chooses render method (SSR vs. puppeteer for JS-rendered pages) |
 | **2 — Crawlability & Indexation** | robots.txt, XML sitemaps (standard, image, news, video, combined), all meta robots directives, canonical tag (HTML + HTTP header), hreflang, rel=alternate, rel=prev/next, redirect chains, Google `site:` SERP verification with screenshot |
-| **3 — Technical SEO & Core Web Vitals** | Lighthouse scores (LCP, INP, CLS, FCP, TTFB) for mobile and desktop, HTTPS, mixed content, URL quality, JS rendering assessment |
+| **3 — Technical SEO & Core Web Vitals** | Lighthouse scores (LCP, INP, CLS, FCP, TTFB) for mobile and desktop, HTTPS, mixed content, URL quality, JS rendering assessment, mobile-first indexing checks |
 | **4 — On-Page SEO** | Title tag, meta description, Open Graph + Twitter Card tags, heading structure, content depth, images, internal links, video detection, competitor benchmark with SERP + page screenshots |
 | **5 — Schema Markup** | Validated via Rich Results Test or validator.schema.org — never raw HTML alone |
 | **5b — Video Indexing** | Runs when video is detected: YouTube embed vs. native `<video>` vs. third-party, video sitemap, VideoObject schema (required + optional fields), Googlebot crawlability, rich result eligibility verdict |
@@ -90,6 +90,21 @@ The skill classifies product pages before checking schema:
 - **Parent/configurable product** → expects `ProductGroup` with `hasVariant[]` and `variesBy` (required for Google's variant selectors in search). Flags `Product` used on a configurable page as Critical.
 - **Variant/SKU product** → expects `Product` with `isVariantOf` pointing to the parent ProductGroup. Flags missing `isVariantOf` as Critical.
 - Cross-checks that variant page canonicals point to themselves (not the parent), and that `hasVariant[].url` values match actual variant URLs.
+
+### Mobile-First Indexing Checks
+
+Google indexes and ranks the mobile version of every page. The skill compares mobile vs. desktop at puppeteer render time and checks:
+
+- **Site configuration** — responsive (recommended), dynamic serving, or separate mobile URL (m-dot) — different checks apply per type
+- **Content parity** — all primary content, headings, prices, and descriptions present on mobile; content hidden behind required user interaction (swipe, tap, type) flagged as Critical since Googlebot won't trigger it
+- **Metadata parity** — `<title>`, `<meta description>`, `<meta name="robots">`, and canonical identical across both versions; a `noindex` on mobile while desktop is indexed = Critical
+- **Structured data parity** — same schema types on both versions; VideoObject, Product, and BreadcrumbList missing on mobile flagged as High Priority
+- **Image checks** — stable image URLs (not dynamically generated), correct resolution for mobile, identical alt text, supported formats
+- **Video checks** — supported HTML tags (`<video>`, `<embed>`, `<object>`), no dynamic video URLs, no `loading="lazy"` on primary video content
+- **Intrusive interstitials** — full-page overlays, app install pop-ups, and non-compliant ad placements flagged as High Priority
+- **m-dot specific** — URL fragment prohibition, 1:1 desktop-to-mobile URL mapping, error page parity, robots.txt parity, canonical + `rel=alternate` structure, hreflang pointing to correct version per locale
+
+Outputs a verdict table with ✅/⚠️/❌ per check.
 
 ### Competitor Benchmarking with Screenshots
 1. Screenshots the Google SERP at mobile viewport before selecting competitors (proves who was ranking and at what position)

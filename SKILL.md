@@ -424,6 +424,93 @@ After fetching, note:
 - If WebFetch returned CSS-only: page is **JS-rendered** — flag this. Use `mcp__puppeteer` to extract the full rendered DOM for Phases 4–6.
 - JS-rendered pages have slower indexation and are at risk of content not being seen by Googlebot.
 
+### Mobile-First Indexing
+
+Google indexes and ranks the **mobile version** of a page. All checks in this section compare the mobile-rendered page against the desktop-rendered page. Use `mcp__puppeteer` to render both versions — set viewport to 390×844 (`isMobile: true`) for mobile and 1440×900 for desktop.
+
+#### Site configuration type
+
+Identify which mobile configuration the site uses — this determines which checks apply:
+
+| Configuration | Signal | Checks |
+|---------------|--------|--------|
+| **Responsive design** | Same URL, same HTML, CSS adapts layout | Content parity, image resolution, lazy-load |
+| **Dynamic serving** | Same URL, different HTML per `User-Agent` | All parity checks + `Vary: User-Agent` header |
+| **Separate mobile URL (m-dot)** | `m.example.com` or `/m/` subdirectory | All parity checks + canonicalization + redirect rules |
+
+Responsive design is Google's recommended approach. Flag dynamic serving or m-dot as informational — not an error, but requires stricter parity checks.
+
+#### Content parity
+
+Fetch the page with both a desktop and a mobile user-agent (or compare `WebFetch` vs. `mcp__puppeteer` at mobile viewport) and check:
+
+- **Primary content identical?** All body text, product descriptions, prices, and key information present on mobile. If mobile shows less content (hidden behind tabs, accordions, or completely absent), flag as **High Priority** — Google only indexes what it sees in the mobile version.
+- **Headings consistent?** H1 and H2 text identical across both versions (same keywords, same intent).
+- **Primary content not requiring user interaction to load?** Content that requires a swipe, tap, click, or form input to reveal will not be indexed. Flag any primary content behind interaction as **Critical**.
+- **Lazy-loaded content?** Lazy loading is acceptable for images below the fold. Flag as **Critical** if primary text content, prices, or schema-relevant information requires scrolling to trigger lazy load — Googlebot may not scroll.
+
+#### Metadata parity
+
+- `<title>` — identical on mobile and desktop?
+- `<meta name="description">` — identical on mobile and desktop?
+- `<meta name="robots">` — same directives on both versions? A `noindex` on the mobile version while desktop is indexed = **Critical** — Google will de-index the page.
+- Canonical tag — does the mobile version have a self-referencing canonical (responsive) or point to the desktop URL (m-dot)? Both are acceptable patterns but must be consistent.
+
+#### Structured data parity
+
+- Same schema types present on both mobile and desktop versions?
+- URLs within structured data updated to mobile URLs if using separate mobile URLs?
+- Flag as **High Priority** if VideoObject, Product, or BreadcrumbList schema is present on desktop but absent on mobile — these directly affect rich results.
+
+#### Image checks (mobile-specific)
+
+- Images load at appropriate resolution on mobile — not the full desktop-resolution image scaled down in CSS (causes slow LCP on mobile)?
+- `alt` text identical across mobile and desktop versions?
+- Image URLs stable — not dynamically generated URLs that change on each page load (breaks Google's image index)?
+- Images in supported formats — SVG accepted; avoid `.jpg` inside SVG `<image>` tags.
+- For separate mobile URLs: same image URLs used on both versions where possible to avoid re-crawling.
+
+#### Video checks (mobile-specific)
+
+- Videos use supported HTML tags: `<video>`, `<embed>`, `<object>` — not custom JS players that Googlebot cannot render?
+- Videos positioned without excessive scrolling required to reach them?
+- No dynamic video URLs that change per page load?
+- No `loading="lazy"` on above-the-fold or primary video content — Googlebot may not trigger lazy load?
+- Structured data (`VideoObject`) identical on both mobile and desktop versions?
+
+#### Separate mobile URL (m-dot) specific checks
+
+Run only if the site uses `m.example.com` or a `/m/` subdirectory:
+
+- **No URL fragments on mobile URLs** — `m.example.com/page#section` will not be indexed; flag as **Critical**.
+- **Error page parity** — if the desktop page returns 200 but the mobile equivalent returns 404 or redirects to the homepage, the page will be removed from the index. Flag as **Critical**.
+- **No many-to-one redirects** — multiple desktop URLs must not all redirect to a single mobile URL (e.g. all pages → `m.example.com/home`). Each desktop URL must map 1:1 to a mobile URL. Flag as **Critical**.
+- **robots.txt parity** — same `Disallow` rules applied to both versions? Resources (CSS, JS, images) blocked on mobile but not desktop will break Googlebot's rendering.
+- **Canonicalization** — mobile URL should have `<link rel="canonical">` pointing to the desktop URL; desktop should have `<link rel="alternate" media="only screen and (max-width: 640px)" href="[mobile-URL]">`.
+- **hreflang** — for international sites, mobile `hreflang` links must point to mobile URLs, and desktop `hreflang` links to desktop URLs — mixed references cause incorrect locale targeting.
+
+#### Interstitials and intrusive elements
+
+- Full-page interstitials (cookie banners, login prompts, app download pop-ups) that cover the main content on mobile are a ranking signal — flag as **High Priority** if a full-page overlay appears before content loads.
+- App download banners using a small, dismissible banner at the top are acceptable (e.g. native iOS/Android smart app banners). Flag full-page app install interstitials as **High Priority**.
+- Follow Better Ads Standards — ads that cover content on mobile hurt both rankings and user experience.
+
+#### Mobile-first indexing verdict
+
+Summarise findings in a table:
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| Site configuration | Responsive / Dynamic serving / m-dot | |
+| Content parity | ✅ / ⚠️ / ❌ | |
+| Metadata parity | ✅ / ⚠️ / ❌ | |
+| Structured data parity | ✅ / ⚠️ / ❌ | |
+| Primary content accessible without interaction | ✅ / ❌ | |
+| Images load correctly on mobile | ✅ / ⚠️ / ❌ | |
+| No intrusive interstitials | ✅ / ❌ | |
+| robots.txt parity (m-dot only) | ✅ / ❌ / N/A | |
+| Canonical + alternate correct (m-dot only) | ✅ / ❌ / N/A | |
+
 ---
 
 ## Phase 4: On-Page SEO
@@ -895,6 +982,30 @@ Collect all findings from Phases 1–7 into a single JSON object. The schema:
     "mobile": { "lcp": "...", "inp": "...", "cls": "...", "fcp": "...", "ttfb": "..." },
     "desktop": { "lcp": "...", "inp": "...", "cls": "..." },
     "topBottleneck": "..."
+  },
+  "mobileFirstIndexing": {
+    "siteConfiguration": "<responsive | dynamic-serving | separate-mobile-url>",
+    "contentParity": true,
+    "headingParity": true,
+    "primaryContentRequiresInteraction": false,
+    "lazyLoadedPrimaryContent": false,
+    "metadataParity": { "title": true, "metaDescription": true, "metaRobots": true, "canonical": true },
+    "structuredDataParity": true,
+    "structuredDataMissingOnMobile": [],
+    "imageUrlsStable": true,
+    "altTextParity": true,
+    "videoTagsSupported": true,
+    "intrusiveInterstitials": false,
+    "mdot": {
+      "applicable": false,
+      "urlFragmentsOnMobile": false,
+      "errorPageParityBroken": false,
+      "manyToOneRedirects": false,
+      "robotsTxtParity": true,
+      "canonicalAlternateCorrect": true,
+      "hreflangPointsToCorrectVersion": true
+    },
+    "issues": []
   },
   "crawlability": {
     "robotsTxt": "...",
