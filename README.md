@@ -188,9 +188,9 @@ deep-seo-audit-skill/
 ## Requirements
 
 - [Claude Code](https://claude.ai/code)
-- **Puppeteer MCP** — required for JS-rendered pages, OG tag extraction, and all screenshots:
+- **Playwright MCP** — required for JS-rendered pages, OG tag extraction, and all screenshots. The old `@modelcontextprotocol/server-puppeteer` is deprecated and archived; use Microsoft's official replacement:
   ```
-  claude mcp add puppeteer npx -- -y @modelcontextprotocol/server-puppeteer
+  claude mcp add playwright npx @playwright/mcp@latest
   ```
 - **Lighthouse CLI** — optional, for real CWV lab scores (falls back to PageSpeed Insights):
   ```
