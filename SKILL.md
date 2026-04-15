@@ -74,6 +74,12 @@ Detect page type from URL structure, title, headings, and content patterns. Read
 
 **State the page type and rendering method at the top of every report.**
 
+Before proceeding to Phase 2, create the output directories so screenshots never fail with `ENOENT`:
+
+```bash
+Bash: mkdir -p output/screenshots
+```
+
 ---
 
 ## Phase 2: Crawlability & Indexation
@@ -1211,7 +1217,15 @@ Confirm the `.docx` was created, then tell the user:
 
 Google uses mobile-first indexing — the mobile version of a page is what Google crawls and ranks. All screenshots taken during an audit **must use a mobile viewport** so the evidence reflects what Google actually sees.
 
-Before every screenshot, resize to iPhone 14 dimensions using `browser_resize`, then capture:
+**Run once at the start of every audit (Phase 1) before any screenshot is taken:**
+
+```bash
+Bash: mkdir -p output/screenshots
+```
+
+This ensures the directory exists — Playwright cannot create parent directories automatically and will throw `ENOENT` if they are missing. `mkdir -p` is safe to run even if the directory already exists.
+
+Then before every screenshot, resize to iPhone 14 dimensions using `browser_resize`, then capture:
 
 ```
 browser_resize: { width: 390, height: 844 }
