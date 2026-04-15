@@ -642,6 +642,13 @@ Note: what the top-ranking pages do that the audited page doesn't.
 
 ⚠️ `WebFetch` and `curl` cannot reliably detect JS-injected schema. Never report "no schema" based on raw HTML alone.
 
+**When reporting schema field issues, always distinguish clearly between:**
+- **Field absent** — the key does not appear in the JSON-LD block at all
+- **Field present but empty** — the key exists with value `""`, `null`, or `[]` — quote the exact value found and explain that an empty value is treated the same as absent by Google's validator
+- **Field present with wrong format** — the key exists but the value is invalid (e.g. `@id` is not a URL, `uploadDate` is not ISO 8601)
+
+Always quote the exact field value extracted from the schema when flagging an issue. Never say "field is missing" when the field is present with an empty value — say "field is present but empty (`""`) — an empty value is not valid".
+
 **Always verify using one of these methods (in order of preference):**
 
 1. **validator.schema.org** — validates schema correctness and completeness:
