@@ -19,11 +19,11 @@ Every finding is backed by evidence: screenshots of Google SERPs, competitor pag
 | Phase | What it covers |
 |-------|---------------|
 | **0 — Scope Check** | Confirms quick check vs. full audit before fetching anything |
-| **1 — Page Type Detection** | Classifies page (PDP, PLP, blog, landing page, homepage, local, SaaS, FAQ) and chooses render method (SSR vs. puppeteer for JS-rendered pages) |
+| **1 — Page Type Detection** | Classifies page (PDP, PLP, blog, landing page, homepage, local, SaaS, FAQ) and chooses render method (SSR vs. Playwright for JS-rendered pages). Creates `output/screenshots/` directory. |
 | **2 — Crawlability & Indexation** | robots.txt, XML sitemaps (standard, image, news, video, combined), all meta robots directives, canonical tag (HTML + HTTP header), hreflang, rel=alternate, rel=prev/next, redirect chains, Google `site:` SERP verification with screenshot |
 | **3 — Technical SEO & Core Web Vitals** | Lighthouse scores (LCP, INP, CLS, FCP, TTFB) for mobile and desktop, HTTPS, mixed content, URL quality, JS rendering assessment, mobile-first indexing checks |
 | **4 — On-Page SEO** | Title tag, meta description, Open Graph + Twitter Card tags, heading structure, content depth, images, internal links, video detection, competitor benchmark with SERP + page screenshots |
-| **5 — Schema Markup** | Validated via Rich Results Test or validator.schema.org — never raw HTML alone |
+| **5 — Schema Markup** | Validated via Playwright DOM extraction (primary) + Rich Results Test / validator.schema.org — never raw HTML alone |
 | **5b — Video Indexing** | Runs when video is detected: YouTube embed vs. native `<video>` vs. third-party, video sitemap, VideoObject schema (required + optional fields), Googlebot crawlability, rich result eligibility verdict |
 | **6 — E-E-A-T & Content Quality** | Experience, Expertise, Authoritativeness, Trustworthiness — applies Google's helpful content (Who/How/Why) framework; YMYL flagging |
 | **7 — Page-Type-Specific Checks** | PDP (parent ProductGroup vs. variant Product schema), PLP, blog, landing page, homepage, local business, SaaS |
@@ -34,16 +34,16 @@ Every finding is backed by evidence: screenshots of Google SERPs, competitor pag
 ## Key Features
 
 ### Evidence-First Auditing
-All indexation and competitor claims are backed by puppeteer screenshots saved to `output/screenshots/`. The skill will not assert a page is indexed or not indexed without a screenshot of the Google SERP result.
+All indexation and competitor claims are backed by Playwright screenshots saved to `output/screenshots/`. The skill will not assert a page is indexed or not indexed without a screenshot of the Google SERP result.
 
 ### Mobile-First Screenshots
-All screenshots use a 390×844 viewport (iPhone 14) with `isMobile: true` — matching Google's mobile-first indexing crawler perspective.
+All screenshots use a 390×844 viewport (iPhone 14) with `isMobile: true` — matching Google's mobile-first indexing crawler perspective. The `output/screenshots/` directory is created automatically at the start of every audit.
 
 ### Open Graph & Social Tag Detection
-OG tags and Twitter Card tags are frequently JS-injected and invisible to a plain HTTP fetch. The skill uses puppeteer DOM extraction first, falling back to static HTML grep, and explicitly notes when tags cannot be confirmed without a rendered DOM.
+OG tags and Twitter Card tags are frequently JS-injected and invisible to a plain HTTP fetch. The skill uses Playwright DOM extraction first (`browser_evaluate` on `<meta property="og:*">`), falling back to static HTML grep, and explicitly notes when tags cannot be confirmed without a rendered DOM.
 
 ### Complete Meta Robots Audit
-All 14 Google-supported directives are checked in one place across all three sources (`<meta name="robots">`, `<meta name="googlebot">`, `X-Robots-Tag` HTTP header):
+All 14 Google-supported directives are checked in one place across all four sources (`<meta name="robots">`, `<meta name="googlebot">`, `X-Robots-Tag` HTTP header, and Playwright-rendered DOM):
 
 - Blocking: `noindex`, `nofollow`, `none`
 - Content suppression: `nosnippet`, `noimageindex`, `noarchive`
@@ -91,9 +91,12 @@ The skill classifies product pages before checking schema:
 - **Variant/SKU product** → expects `Product` with `isVariantOf` pointing to the parent ProductGroup. Flags missing `isVariantOf` as Critical.
 - Cross-checks that variant page canonicals point to themselves (not the parent), and that `hasVariant[].url` values match actual variant URLs.
 
+### Schema Extraction via Playwright DOM
+Schema is extracted directly from the rendered DOM using `browser_evaluate` — the only reliable way to see JS-injected JSON-LD. Field values are reported exactly as they appear in the raw DOM (not as resolved/normalised by validators). Validators (Rich Results Test, schema.org) are used as supplementary checks only.
+
 ### Mobile-First Indexing Checks
 
-Google indexes and ranks the mobile version of every page. The skill compares mobile vs. desktop at puppeteer render time and checks:
+Google indexes and ranks the mobile version of every page. The skill compares mobile vs. desktop at Playwright render time and checks:
 
 - **Site configuration** — responsive (recommended), dynamic serving, or separate mobile URL (m-dot) — different checks apply per type
 - **Content parity** — all primary content, headings, prices, and descriptions present on mobile; content hidden behind required user interaction (swipe, tap, type) flagged as Critical since Googlebot won't trigger it
@@ -157,11 +160,12 @@ The skill asks one clarifying question if the goal isn't clear. If you just say 
 
 Plus a Word document at `output/audit_report.docx` (requires `npm install` — see Requirements).
 
-Screenshots are saved to `output/screenshots/`:
+Screenshots are saved to `output/screenshots/` (directory created automatically):
 - `google_site_search_mobile.png` — `site:` SERP evidence
 - `google_page_indexed_mobile.png` — page-specific indexation
 - `serp_[keyword]_mobile.png` — competitor SERP
 - `competitor_1_mobile.png`, `competitor_2_mobile.png` — competitor pages
+- `homepage_mobile.png` (or page-type equivalent) — the audited page
 
 ---
 
@@ -172,6 +176,9 @@ deep-seo-audit-skill/
 ├── SKILL.md                          # Skill definition and full audit instructions
 ├── package.json                      # npm dependency (docx) for report generation
 ├── scripts/
+│   ├── hooks/
+│   │   └── post-commit               # Git hook source — auto-syncs .claude/skills/ on commit
+│   ├── install-hooks.sh              # Run once after cloning to install git hooks
 │   ├── lighthouse_audit.sh           # Lighthouse CLI runner for CWV
 │   └── generate_docx.js              # Converts audit JSON → Word document
 ├── references/
@@ -188,10 +195,12 @@ deep-seo-audit-skill/
 ## Requirements
 
 - [Claude Code](https://claude.ai/code)
-- **Playwright MCP** — required for JS-rendered pages, OG tag extraction, and all screenshots. The old `@modelcontextprotocol/server-puppeteer` is deprecated and archived; use Microsoft's official replacement:
+- **Playwright MCP** — required for JS-rendered pages, OG tag extraction, schema DOM extraction, and all screenshots. Install Microsoft's official Playwright MCP:
   ```
   claude mcp add playwright npx @playwright/mcp@latest
   ```
+  Tools used: `browser_navigate`, `browser_evaluate`, `browser_resize`, `browser_take_screenshot`
+
 - **Lighthouse CLI** — optional, for real CWV lab scores (falls back to PageSpeed Insights):
   ```
   npm install -g lighthouse
