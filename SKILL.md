@@ -8,6 +8,17 @@ allowed-tools: mcp__playwright, WebSearch, WebFetch, Bash(lighthouse *), Bash(cu
 
 Performs technical SEO audits for any URL — from a 2-minute focused check to a full 7-phase deep audit. Adapts to page type and user goal.
 
+## Runtime Requirement
+
+This skill depends on **Playwright MCP** for rendered DOM access, screenshots, schema extraction, OG tag confirmation, and mobile-first evidence capture. Importing this skill does **not** install Playwright MCP automatically.
+
+If Playwright MCP is unavailable, say so clearly before continuing and limit the audit to static-fetch checks where possible. Do not imply that rendered checks, screenshots, or JS-dependent schema/OG findings were verified when Playwright tools are unavailable.
+
+Recommended install command:
+```bash
+claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
+```
+
 ## Bundled References
 Load as needed:
 - `references/page-type-signals.md` — URL patterns, content signals, expected schema by page type. Read during Phase 1 if page type is ambiguous.
@@ -55,7 +66,11 @@ Fetch the URL and classify the page type. This determines which checks to run an
 1. `WebFetch [URL]` — fastest, works for SSR pages
 2. If WebFetch returns mostly CSS or near-empty content (JS-rendered page):
    - Try: `curl -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" [URL]`
-   - If still empty, use `browser_navigate` + `browser_evaluate` (playwright) to render the page with JavaScript and extract the full DOM
+   - If still empty and Playwright MCP is available, use `browser_navigate` + `browser_evaluate` to render the page with JavaScript and extract the full DOM
+   - If still empty and Playwright MCP is unavailable, stop and report that the rendered audit could not be completed because Playwright MCP is not installed. Tell the user to run:
+     ```bash
+     claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
+     ```
 3. If the site is offline or returns connection errors, report this immediately as a Critical Issue and skip to a recommendations-only audit
 
 Detect page type from URL structure, title, headings, and content patterns. Read `references/page-type-signals.md` if ambiguous.

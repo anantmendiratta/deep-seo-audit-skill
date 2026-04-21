@@ -10,15 +10,16 @@ A Claude Code skill (`SKILL.md`) that performs expert-level technical SEO audits
 
 ```
 deep-seo-audit-skill/
-├── SKILL.md              # The skill definition — frontmatter + audit instructions
+├── SKILL.md                # Single source-of-truth skill definition
+├── README.md               # Usage, setup, and capability overview
 ├── assets/
 │   └── report-template.md  # Markdown report template
 ├── scripts/
-│   ├── lighthouse_audit.sh  # Lighthouse CLI wrapper for CWV
-│   └── generate_docx.js     # Converts audit JSON → .docx (Phase 8, uses docx-js)
-├── references/                # Page-type signals, CWV thresholds, E-E-A-T, helpful content
+│   ├── lighthouse_audit.sh # Lighthouse CLI wrapper for CWV
+│   └── generate_docx.js    # Converts audit JSON → .docx (Phase 8, uses docx-js)
+├── references/             # Page-type signals, CWV thresholds, E-E-A-T, helpful content
 └── evals/
-    └── evals.json           # Test cases for evaluating skill quality
+    └── evals.json          # Test cases for evaluating skill quality
 ```
 
 ## Developing the Skill
@@ -30,7 +31,7 @@ This skill follows the [skill-creator framework](https://github.com/anthropics/s
 2. Run baseline runs (same prompts, no skill)
 3. Compare outputs using the eval-viewer
 
-**To iterate on the skill**, edit `SKILL.md` directly. The key sections to tune:
+**To iterate on the skill**, edit the root `SKILL.md` directly. It is the only authoritative skill file in this repo. The key sections to tune:
 - Frontmatter `description` — controls when the skill triggers
 - Phase order and checklist items — controls audit depth
 - Output format template — controls report structure
@@ -40,7 +41,8 @@ This skill follows the [skill-creator framework](https://github.com/anthropics/s
 - **Page type detection is Phase 1** — every recommendation is framed around the detected page type (PDP, PLP, blog, etc.)
 - **Schema checking always uses Rich Results Test** — `web_fetch` cannot see JS-injected schema; the skill explicitly instructs using `web_search` to access the Google Rich Results Test URL
 - **Core Web Vitals checked via PageSpeed Insights** — accessed via `web_search` since it requires JavaScript rendering
-- **DOCX report generation (Phase 8)** — uses `scripts/generate_docx.js` (built on the [Anthropic docx skill](https://github.com/anthropics/skills/blob/main/skills/docx/SKILL.md)) to produce a professional Word document from structured audit JSON. Requires `npm install -g docx`.
+- **DOCX report generation (Phase 8)** — uses `scripts/generate_docx.js` (built on the [Anthropic docx skill](https://github.com/anthropics/skills/blob/main/skills/docx/SKILL.md)) to produce a professional Word document from structured audit JSON. Requires `npm install` in this repo.
+- **Repository portability** — keep a single root `SKILL.md`; do not maintain a second installed copy under `.claude/skills/` inside this repo.
 - **Priority hierarchy:** Crawlability → Technical → On-Page → Content → E-E-A-T
 
 ## Audit Phases (in order)

@@ -118,7 +118,17 @@ Outputs a verdict table with ✅/⚠️/❌ per check.
 
 ## Usage
 
-Install the skill, then invoke it:
+### Before first use
+
+This skill depends on **Playwright MCP** for rendered DOM access, screenshots, OG tag checks, schema extraction, and mobile-first evidence capture. Importing the skill does **not** install Playwright MCP automatically, so users should install it once before running a full audit.
+
+Install it in Claude Code:
+
+```bash
+claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
+```
+
+Then invoke the skill:
 
 ```
 /deep-seo-audit
@@ -173,12 +183,9 @@ Screenshots are saved to `output/screenshots/` (directory created automatically)
 
 ```
 deep-seo-audit-skill/
-├── SKILL.md                          # Skill definition and full audit instructions
+├── SKILL.md                          # Single source-of-truth skill definition
 ├── package.json                      # npm dependency (docx) for report generation
 ├── scripts/
-│   ├── hooks/
-│   │   └── post-commit               # Git hook source — auto-syncs .claude/skills/ on commit
-│   ├── install-hooks.sh              # Run once after cloning to install git hooks
 │   ├── lighthouse_audit.sh           # Lighthouse CLI runner for CWV
 │   └── generate_docx.js              # Converts audit JSON → Word document
 ├── references/
@@ -195,11 +202,13 @@ deep-seo-audit-skill/
 ## Requirements
 
 - [Claude Code](https://claude.ai/code)
-- **Playwright MCP** — required for JS-rendered pages, OG tag extraction, schema DOM extraction, and all screenshots. Install Microsoft's official Playwright MCP with the `--sandbox` flag to keep Chromium's OS-level sandbox active (the default omits it, which Chromium flags as a security concern on macOS):
-  ```
+- **Playwright MCP** — required for full rendered audits and all screenshot-based evidence. The skill does not install this automatically, so treat it as a setup prerequisite.
+  ```bash
   claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
   ```
   Tools used: `browser_navigate`, `browser_evaluate`, `browser_resize`, `browser_take_screenshot`
+
+  Without Playwright MCP, the skill can still do limited static checks with WebFetch-based analysis, but it cannot verify JS-rendered content, capture screenshots, confirm OG tags reliably, or perform the intended mobile-first evidence workflow.
 
   > **Why `--sandbox`?** By default `@playwright/mcp` passes `--no-sandbox` to Chromium for CI compatibility. On macOS, Chromium uses the OS sandbox natively, so `--no-sandbox` is both unnecessary and a security regression. Passing `--sandbox` explicitly re-enables it.
 
@@ -212,15 +221,9 @@ deep-seo-audit-skill/
   npm install
   ```
 
-### After cloning
+### Portability
 
-Run the hook installer once so the installed skill stays in sync with the source automatically:
-
-```
-bash scripts/install-hooks.sh
-```
-
-This installs a `post-commit` git hook that copies `SKILL.md`, `assets/report-template.md`, and all reference files into `.claude/skills/deep-seo-audit/` after every commit — keeping the skill runner always up to date.
+This repo keeps a single authoritative `SKILL.md` at the root so it can be uploaded directly into Claude's skill import flow without any sync step or installed duplicate copy.
 
 ---
 

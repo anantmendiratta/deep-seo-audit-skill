@@ -1,0 +1,83 @@
+{
+  "skill_name": "deep-seo-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can you do a full SEO audit on https://www.allbirds.com/products/mens-tree-runners? I want to know why this page isn't ranking as well as it should.",
+      "expected_output": "Full structured audit detecting PDP page type, checking crawlability, title tag, meta description, schema via Rich Results Test, Core Web Vitals via Lighthouse, and providing prioritized recommendations with PDP-specific checks.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies the page type as a Product Detail Page (PDP)",
+        "Checks and reports on the title tag with actual content and character count",
+        "Checks and reports on meta description with actual content",
+        "Checks H1 heading and heading hierarchy",
+        "Mentions checking Rich Results Test for schema, not just raw HTML",
+        "Checks robots.txt and sitemap",
+        "Reports Core Web Vitals with actual scores (not just a link to PSI)",
+        "Provides a prioritized list of issues (Critical / High / Medium / Quick Wins)",
+        "Includes PDP-specific checks (product schema, reviews, unique description)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "audit https://ahrefs.com/blog/seo-audit/ for SEO issues",
+      "expected_output": "Full audit detecting Blog Post page type, checking Article schema via Rich Results Test, author E-E-A-T including helpful content signals, internal linking, content freshness, CWV, and blog-specific recommendations.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies the page type as a Blog Post or Article",
+        "Checks for Article or BlogPosting schema via Rich Results Test",
+        "Assesses author credentials and E-E-A-T signals",
+        "References people-first content signals or Who/How/Why framework from Google helpful content guidelines",
+        "Reports on content freshness (last updated date)",
+        "Checks title tag length and keyword placement",
+        "Reports Core Web Vitals with actual scores or explains why scores unavailable",
+        "Provides blog-specific recommendations"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I run a local plumbing business. Can you check the SEO on this homepage? https://www.joethegoatfarmer.com/",
+      "expected_output": "Full audit detecting Local Business page type, checking LocalBusiness schema, NAP visibility, location keywords, Google Map embed, robots.txt, sitemap, Core Web Vitals, and local SEO recommendations.",
+      "files": [],
+      "expectations": [
+        "Detects the page type as Local Business or Homepage",
+        "Checks for LocalBusiness schema via Rich Results Test",
+        "Checks NAP (name, address, phone) visibility on the page",
+        "Checks whether location keywords appear in the title tag and H1",
+        "Checks robots.txt and sitemap",
+        "Reports Core Web Vitals",
+        "Provides local SEO specific recommendations"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run a full SEO audit on https://www.nutrabay.com/ — it's a React SPA, so make sure you handle JS rendering properly.",
+      "expected_output": "Full audit that detects JS rendering, uses curl or puppeteer fallback to extract rendered DOM content, correctly identifies page type, checks schema, CWV via Lighthouse, and flags any JS-rendering SEO risks.",
+      "files": [],
+      "expectations": [
+        "Detects or flags that the page uses JavaScript rendering (SPA/CSR)",
+        "Uses curl, mcp__puppeteer, or another fallback when WebFetch returns insufficient content",
+        "Successfully extracts page title, H1, or meta description from the rendered page",
+        "Reports page type based on rendered content",
+        "Checks schema markup (via Rich Results Test or puppeteer DOM extraction)",
+        "Reports Core Web Vitals",
+        "Flags any JS-rendering SEO risks (slow indexation, content not in initial HTML)",
+        "Provides prioritized recommendations"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "just check the title tag and meta description on https://www.allbirds.com/products/mens-tree-runners — that's all I need",
+      "expected_output": "Focused response covering only title tag and meta description — not a full audit. Should quote exact content, character counts, and specific recommendations for each. No robots.txt, no CWV, no schema sections.",
+      "files": [],
+      "expectations": [
+        "Recognizes this as a quick/focused check, not a full audit",
+        "Does NOT produce a full 7-phase audit report",
+        "Quotes the exact title tag with character count",
+        "Quotes the exact meta description (or notes it is missing) with character count",
+        "Provides specific improvement recommendations for title and meta description",
+        "Response is concise and focused — no crawlability, CWV, or schema sections"
+      ]
+    }
+  ]
+}
