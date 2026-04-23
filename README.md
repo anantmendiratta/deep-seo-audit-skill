@@ -34,16 +34,16 @@ Every finding is backed by evidence: screenshots of Google SERPs, competitor pag
 ## Key Features
 
 ### Evidence-First Auditing
-All indexation and competitor claims are backed by Playwright screenshots saved to `output/screenshots/`. The skill will not assert a page is indexed or not indexed without a screenshot of the Google SERP result.
+All indexation and competitor claims are backed by Playwright MCP screenshots saved to `output/screenshots/`. The skill will not assert a page is indexed or not indexed without a screenshot of the Google SERP result.
 
 ### Mobile-First Screenshots
 All screenshots use a 390×844 viewport (iPhone 14) with `isMobile: true` — matching Google's mobile-first indexing crawler perspective. The `output/screenshots/` directory is created automatically at the start of every audit.
 
 ### Open Graph & Social Tag Detection
-OG tags and Twitter Card tags are frequently JS-injected and invisible to a plain HTTP fetch. The skill uses Playwright DOM extraction first (`browser_evaluate` on `<meta property="og:*">`), falling back to static HTML grep, and explicitly notes when tags cannot be confirmed without a rendered DOM.
+OG tags and Twitter Card tags are frequently JS-injected and invisible to a plain HTTP fetch. The skill uses Playwright MCP DOM extraction first (`mcp__playwright__browser_evaluate` on `<meta property="og:*">`), falling back to static HTML grep, and explicitly notes when tags cannot be confirmed without a rendered DOM.
 
 ### Complete Meta Robots Audit
-All 14 Google-supported directives are checked in one place across all four sources (`<meta name="robots">`, `<meta name="googlebot">`, `X-Robots-Tag` HTTP header, and Playwright-rendered DOM):
+All 14 Google-supported directives are checked in one place across all four sources (`<meta name="robots">`, `<meta name="googlebot">`, `X-Robots-Tag` HTTP header, and the Playwright MCP-rendered DOM):
 
 - Blocking: `noindex`, `nofollow`, `none`
 - Content suppression: `nosnippet`, `noimageindex`, `noarchive`
@@ -91,12 +91,12 @@ The skill classifies product pages before checking schema:
 - **Variant/SKU product** → expects `Product` with `isVariantOf` pointing to the parent ProductGroup. Flags missing `isVariantOf` as Critical.
 - Cross-checks that variant page canonicals point to themselves (not the parent), and that `hasVariant[].url` values match actual variant URLs.
 
-### Schema Extraction via Playwright DOM
-Schema is extracted directly from the rendered DOM using `browser_evaluate` — the only reliable way to see JS-injected JSON-LD. Field values are reported exactly as they appear in the raw DOM (not as resolved/normalised by validators). Validators (Rich Results Test, schema.org) are used as supplementary checks only.
+### Schema Extraction via Playwright MCP DOM
+Schema is extracted directly from the rendered DOM using `mcp__playwright__browser_evaluate` — the only reliable way to see JS-injected JSON-LD. Field values are reported exactly as they appear in the raw DOM (not as resolved/normalised by validators). Validators (Rich Results Test, schema.org) are used as supplementary checks only.
 
 ### Mobile-First Indexing Checks
 
-Google indexes and ranks the mobile version of every page. The skill compares mobile vs. desktop at Playwright render time and checks:
+Google indexes and ranks the mobile version of every page. The skill compares mobile vs. desktop with Playwright MCP renders and checks:
 
 - **Site configuration** — responsive (recommended), dynamic serving, or separate mobile URL (m-dot) — different checks apply per type
 - **Content parity** — all primary content, headings, prices, and descriptions present on mobile; content hidden behind required user interaction (swipe, tap, type) flagged as Critical since Googlebot won't trigger it
@@ -206,7 +206,7 @@ deep-seo-audit-skill/
   ```bash
   claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
   ```
-  Tools used: `browser_navigate`, `browser_evaluate`, `browser_resize`, `browser_take_screenshot`
+  Tools used: `mcp__playwright__browser_navigate`, `mcp__playwright__browser_evaluate`, `mcp__playwright__browser_resize`, `mcp__playwright__browser_take_screenshot`
 
   Without Playwright MCP, the skill can still do limited static checks with WebFetch-based analysis, but it cannot verify JS-rendered content, capture screenshots, confirm OG tags reliably, or perform the intended mobile-first evidence workflow.
 

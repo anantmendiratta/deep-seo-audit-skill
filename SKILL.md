@@ -1,7 +1,7 @@
 ---
 name: deep-seo-audit
 description: Expert-level technical SEO audit for any URL. Use this skill whenever the user wants to audit, analyze, review, or check the SEO of a website, page, or URL — even if they just say "check my site", "why isn't my page ranking", "quick SEO check", or "look at my title tags". Covers crawlability, indexation, Core Web Vitals (via Lighthouse), on-page SEO, schema markup, content quality, and E-E-A-T. Automatically detects page type (product listing, product detail, landing page, blog post, homepage, etc.) and tailors the audit accordingly. Also use for focused single-element checks like "is my schema correct?" or "check my page speed".
-allowed-tools: mcp__playwright, WebSearch, WebFetch, Bash(lighthouse *), Bash(curl *), Bash(python3 *), Bash(node *), Bash(npm *), Read, Write
+allowed-tools: mcp__playwright__browser_navigate, mcp__playwright__browser_evaluate, mcp__playwright__browser_resize, mcp__playwright__browser_take_screenshot, WebSearch, WebFetch, Bash, Read, Write
 ---
 
 # Deep SEO Audit Skill
@@ -18,6 +18,8 @@ Recommended install command:
 ```bash
 claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
 ```
+
+This skill is written for Claude Code and can also be used by other agents that support the same tool surface. If an agent lacks Playwright MCP, WebFetch/WebSearch, or shell access, degrade to static checks only and say which phases could not be verified.
 
 ## Bundled References
 Load as needed:
@@ -66,11 +68,12 @@ Fetch the URL and classify the page type. This determines which checks to run an
 1. `WebFetch [URL]` — fastest, works for SSR pages
 2. If WebFetch returns mostly CSS or near-empty content (JS-rendered page):
    - Try: `curl -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" [URL]`
-   - If still empty and Playwright MCP is available, use `browser_navigate` + `browser_evaluate` to render the page with JavaScript and extract the full DOM
+   - If still empty and Playwright MCP is available, use `mcp__playwright__browser_navigate` + `mcp__playwright__browser_evaluate` to render the page with JavaScript and extract the full DOM
    - If still empty and Playwright MCP is unavailable, stop and report that the rendered audit could not be completed because Playwright MCP is not installed. Tell the user to run:
      ```bash
      claude mcp add playwright npx @playwright/mcp@latest -- --sandbox
      ```
+   - If the current agent cannot access Playwright tools even though they exist elsewhere, state that the rendered phases are unavailable in this runtime and continue with static checks only.
 3. If the site is offline or returns connection errors, report this immediately as a Critical Issue and skip to a recommendations-only audit
 
 Detect page type from URL structure, title, headings, and content patterns. Read `references/page-type-signals.md` if ambiguous.
@@ -283,7 +286,7 @@ Flag as **Critical** if an extension's tags are used but its namespace is not de
 
 ### Indexation Signals (from page HTML)
 
-⚠️ All `<link>` and `<meta>` tags in this section live in `<head>`. They are **frequently JS-injected** and invisible to `WebFetch`. If the page is JS-rendered, extract this entire section via playwright (`browser_navigate` + `browser_evaluate`) — do not guess or omit.
+⚠️ All `<link>` and `<meta>` tags in this section live in `<head>`. They are **frequently JS-injected** and invisible to `WebFetch`. If the page is JS-rendered, extract this entire section via Playwright MCP (`mcp__playwright__browser_navigate` + `mcp__playwright__browser_evaluate`) — do not guess or omit.
 
 #### Meta Robots (complete directive audit)
 
@@ -395,9 +398,9 @@ WebSearch: site:[domain]
 Then take a **[mobile screenshot]** of the SERP results as evidence:
 
 ```
-browser_resize: { width: 390, height: 844 }
-browser_navigate: { url: "https://www.google.com/search?q=site:[domain]" }
-browser_take_screenshot: { filename: "output/screenshots/google_site_search_mobile.png" }
+mcp__playwright__browser_resize: { width: 390, height: 844 }
+mcp__playwright__browser_navigate: { url: "https://www.google.com/search?q=site:[domain]" }
+mcp__playwright__browser_take_screenshot: { filename: "output/screenshots/google_site_search_mobile.png" }
 ```
 
 Save to `output/screenshots/google_site_search_mobile.png`. Report:
@@ -443,12 +446,12 @@ Search for the PSI results page and extract scores. Always report both mobile an
 ### JavaScript Rendering Assessment
 After fetching, note:
 - Was critical content (H1, body text, price, CTAs) in the initial HTML?
-- If WebFetch returned CSS-only: page is **JS-rendered** — flag this. Use playwright (`browser_navigate` + `browser_evaluate`) to extract the full rendered DOM for Phases 4–6.
+- If WebFetch returned CSS-only: page is **JS-rendered** — flag this. Use Playwright MCP (`mcp__playwright__browser_navigate` + `mcp__playwright__browser_evaluate`) to extract the full rendered DOM for Phases 4–6.
 - JS-rendered pages have slower indexation and are at risk of content not being seen by Googlebot.
 
 ### Mobile-First Indexing
 
-Google indexes and ranks the **mobile version** of a page. All checks in this section compare the mobile-rendered page against the desktop-rendered page. Use playwright to render both versions — `browser_resize { width: 390, height: 844 }` for mobile and `browser_resize { width: 1440, height: 900 }` for desktop.
+Google indexes and ranks the **mobile version** of a page. All checks in this section compare the mobile-rendered page against the desktop-rendered page. Use Playwright MCP to render both versions — `mcp__playwright__browser_resize { width: 390, height: 844 }` for mobile and `mcp__playwright__browser_resize { width: 1440, height: 900 }` for desktop.
 
 #### Site configuration type
 
@@ -464,7 +467,7 @@ Responsive design is Google's recommended approach. Flag dynamic serving or m-do
 
 #### Content parity
 
-Fetch the page with both a desktop and a mobile user-agent (or compare `WebFetch` vs. playwright at mobile viewport via `browser_resize 390×844`) and check:
+Fetch the page with both a desktop and a mobile user-agent (or compare `WebFetch` vs. Playwright MCP at mobile viewport via `mcp__playwright__browser_resize 390×844`) and check:
 
 - **Primary content identical?** All body text, product descriptions, prices, and key information present on mobile. If mobile shows less content (hidden behind tabs, accordions, or completely absent), flag as **High Priority** — Google only indexes what it sees in the mobile version.
 - **Headings consistent?** H1 and H2 text identical across both versions (same keywords, same intent).
@@ -537,7 +540,7 @@ Summarise findings in a table:
 
 ## Phase 4: On-Page SEO
 
-Extract from the HTML (or playwright-rendered DOM if JS-rendered):
+Extract from the HTML (or Playwright MCP-rendered DOM if JS-rendered):
 
 ### Title Tag
 - Quote the exact title
@@ -562,9 +565,9 @@ Extract from the HTML (or playwright-rendered DOM if JS-rendered):
 ⚠️ OG tags are frequently injected by JavaScript and **will not appear in a raw `WebFetch` response**. Always verify using the rendered DOM.
 
 **Extraction method (use in order):**
-1. Use playwright: `browser_navigate` to the URL, then `browser_evaluate` to extract all `<meta property="og:*">` and `<meta name="twitter:*">` from the rendered DOM — this is the only reliable method for JS-rendered pages.
+1. Use Playwright MCP: `mcp__playwright__browser_navigate` to the URL, then `mcp__playwright__browser_evaluate` to extract all `<meta property="og:*">` and `<meta name="twitter:*">` from the rendered DOM — this is the only reliable method for JS-rendered pages.
 2. Grep the raw HTML for `og:` — if found, the site uses SSR for meta tags and WebFetch results are trustworthy.
-3. If neither yields results, note explicitly: "OG tags not detectable via static fetch — playwright DOM extraction required for confirmation."
+3. If neither yields results, note explicitly: "OG tags not detectable via static fetch — Playwright MCP DOM extraction required for confirmation."
 
 **Check each of these:**
 
@@ -601,7 +604,7 @@ Flag as **Medium Priority** if any of `og:title`, `og:image`, `og:url` are missi
 
 ### Video Detection
 
-Scan the page for any video content. Check for all of the following patterns (use playwright DOM extraction if JS-rendered):
+Scan the page for any video content. Check for all of the following patterns (use Playwright MCP DOM extraction if JS-rendered):
 
 | Signal | What to look for |
 |--------|-----------------|
@@ -610,7 +613,7 @@ Scan the page for any video content. Check for all of the following patterns (us
 | Vimeo embed | `<iframe>` with `src` containing `vimeo.com` |
 | Other embed | `<iframe>` with video-related `src` (wistia, loom, dailymotion, etc.) |
 | VideoObject schema | `"@type": "VideoObject"` in any `<script type="application/ld+json">` |
-| Lazy-loaded video | `data-src` containing video URL, or JS-injected `<iframe>` (only visible via playwright DOM extraction) |
+| Lazy-loaded video | `data-src` containing video URL, or JS-injected `<iframe>` (only visible via Playwright MCP DOM extraction) |
 
 If **no video is found**: note "No video content detected" and skip Phase 5b.
 
@@ -623,9 +626,9 @@ If **video is found**: record the type(s), count, and location on page, then pro
 Run the target keyword search and take a **[mobile screenshot]** of the results page as evidence of who is actually ranking:
 ```
 WebSearch: [target keyword]
-browser_resize: { width: 390, height: 844 }
-browser_navigate: { url: "https://www.google.com/search?q=[target+keyword]" }
-browser_take_screenshot: { filename: "output/screenshots/serp_[keyword-slug]_mobile.png" }
+mcp__playwright__browser_resize: { width: 390, height: 844 }
+mcp__playwright__browser_navigate: { url: "https://www.google.com/search?q=[target+keyword]" }
+mcp__playwright__browser_take_screenshot: { filename: "output/screenshots/serp_[keyword-slug]_mobile.png" }
 ```
 Save to `output/screenshots/serp_[keyword-slug]_mobile.png`. This proves which competitors were selected and what position they hold at time of audit — on mobile, which is what Google ranks against.
 
@@ -634,9 +637,9 @@ Save to `output/screenshots/serp_[keyword-slug]_mobile.png`. This proves which c
 For the top 1–2 organic results (skip ads, featured snippets, and map packs):
 1. Take a **[mobile screenshot]** of each competitor page before fetching it:
    ```
-   browser_resize: { width: 390, height: 844 }
-   browser_navigate: { url: "[competitor-URL]" }
-   browser_take_screenshot: { filename: "output/screenshots/competitor_1_mobile.png" }
+   mcp__playwright__browser_resize: { width: 390, height: 844 }
+   mcp__playwright__browser_navigate: { url: "[competitor-URL]" }
+   mcp__playwright__browser_take_screenshot: { filename: "output/screenshots/competitor_1_mobile.png" }
    ```
    Save to `output/screenshots/competitor_1_mobile.png`, `competitor_2_mobile.png`. Mobile viewport is required — this is what Google crawls and what users on mobile see.
 2. `WebFetch [competitor-URL]` — extract on-page signals.
@@ -664,24 +667,24 @@ Note: what the top-ranking pages do that the audited page doesn't.
 
 ## Phase 5: Schema Markup
 
-⚠️ `WebFetch` and `curl` see the raw HTML before JavaScript executes. Schema fields that appear empty in raw HTML may be populated at runtime by JS. **Always extract schema via playwright first.**
+⚠️ `WebFetch` and `curl` see the raw HTML before JavaScript executes. Schema fields that appear empty in raw HTML may be populated at runtime by JS. **Always extract schema via Playwright MCP first.**
 
-### Step 1: Extract schema via playwright (primary method)
+### Step 1: Extract schema via Playwright MCP (primary method)
 
 ```
-browser_navigate: { url: "[URL]" }
-browser_evaluate: {
+mcp__playwright__browser_navigate: { url: "[URL]" }
+mcp__playwright__browser_evaluate: {
   function: "Array.from(document.querySelectorAll('script[type=\"application/ld+json\"]')).map(s => s.innerText)"
 }
 ```
 
 This returns the schema exactly as a JSON-LD processor (and Google) sees it after JS has run. Parse each block and record all types found.
 
-Only fall back to `WebFetch` raw HTML extraction if playwright is unavailable. If using raw HTML, note explicitly: "Schema extracted from static HTML — JS-populated fields may differ from what Google indexes."
+Only fall back to `WebFetch` raw HTML extraction if Playwright MCP is unavailable. If using raw HTML, note explicitly: "Schema extracted from static HTML — JS-populated fields may differ from what Google indexes."
 
 ### Step 2: Validate via official tools
 
-After extracting schema via playwright, cross-reference with at least one of:
+After extracting schema via Playwright MCP, cross-reference with at least one of:
 
 1. **Rich Results Test** — checks Google-specific rich result eligibility:
    ```
@@ -697,7 +700,7 @@ Use these tools to check for rich result eligibility and structural errors. Howe
 
 ### Step 3: Evaluate field values — report what the DOM contains
 
-Always quote the exact raw value from the playwright-extracted JSON-LD. Report what is actually there, not what a processor might infer.
+Always quote the exact raw value from the Playwright MCP-extracted JSON-LD. Report what is actually there, not what a processor might infer.
 
 | State | Example | How to report |
 |-------|---------|--------------|
@@ -768,7 +771,7 @@ Report:
 
 ### Step 3: VideoObject Schema Validation
 
-Check for `VideoObject` in the page's structured data (use playwright DOM extraction or Rich Results Test):
+Check for `VideoObject` in the page's structured data (use Playwright MCP DOM extraction or Rich Results Test):
 
 **Required fields for Google rich results:**
 | Field | Requirement |
@@ -1240,15 +1243,15 @@ Bash: mkdir -p output/screenshots
 
 This ensures the directory exists — Playwright cannot create parent directories automatically and will throw `ENOENT` if they are missing. `mkdir -p` is safe to run even if the directory already exists.
 
-Then before every screenshot, resize to iPhone 14 dimensions using `browser_resize`, then capture:
+Then before every screenshot, resize to iPhone 14 dimensions using `mcp__playwright__browser_resize`, then capture:
 
 ```
-browser_resize: { width: 390, height: 844 }
-browser_take_screenshot: { filename: "output/screenshots/[name]_mobile.png" }
+mcp__playwright__browser_resize: { width: 390, height: 844 }
+mcp__playwright__browser_take_screenshot: { filename: "output/screenshots/[name]_mobile.png" }
 ```
 
 Shorthand used in instructions below:
-> **[mobile screenshot]** = `browser_resize 390×844` → `browser_take_screenshot`
+> **[mobile screenshot]** = `mcp__playwright__browser_resize 390×844` → `mcp__playwright__browser_take_screenshot`
 
 Apply this to every screenshot in the audit: SERP screenshots, indexation checks, competitor pages, and any page screenshot taken for evidence.
 
@@ -1261,12 +1264,12 @@ If the page has a separate mobile URL (m-dot) detected via `rel="alternate" medi
 - **WebFetch** — initial page fetch, robots.txt, sitemap.xml
 - **curl -I via Bash** — always run to get HTTP response headers: `X-Robots-Tag`, `Link: rel=canonical`, `Link: rel=alternate`, HSTS, redirect chain. Do not skip this even when WebFetch succeeds.
 - **curl via Bash** — fallback for JS-rendered pages or bot-blocked responses
-- **playwright** (`mcp__playwright`) — full DOM extraction for SPA/CSR pages via `browser_navigate` + `browser_evaluate`; extracts JS-injected schema and OG tags; screenshots via `browser_take_screenshot` after `browser_resize 390×844` for mobile viewport
+- **Playwright MCP** — full DOM extraction for SPA/CSR pages via `mcp__playwright__browser_navigate` + `mcp__playwright__browser_evaluate`; extracts JS-injected schema and OG tags; screenshots via `mcp__playwright__browser_take_screenshot` after `mcp__playwright__browser_resize 390×844` for mobile viewport
 - **Lighthouse via Bash** — primary CWV tool; run `scripts/lighthouse_audit.sh`
 - **WebSearch** — PageSpeed Insights fallback, Rich Results Test, competitor SERP research, `site:` indexation checks
 - **Write** — save audit report to `output/audit_report.md`
 - **node generate_docx.js** — convert audit JSON to `.docx` (Phase 8); requires `npm install -g docx`
-- Never report schema absent without checking validator.schema.org, Rich Results Test, or playwright DOM extraction
+- Never report schema absent without checking validator.schema.org, Rich Results Test, or Playwright MCP DOM extraction
 - Always report CWV for both mobile and desktop
-- Never assert a page is indexed or not indexed without a playwright screenshot of the Google `site:` SERP as evidence
-- Never report OG tags as absent based on `WebFetch` alone — always confirm via playwright DOM extraction or note it as unverifiable
+- Never assert a page is indexed or not indexed without a Playwright MCP screenshot of the Google `site:` SERP as evidence
+- Never report OG tags as absent based on `WebFetch` alone — always confirm via Playwright MCP DOM extraction or note it as unverifiable
